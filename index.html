@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173f83"><meta name="description" content="DATA SANA MEMORIAL SCHOOL attendance and information system">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="assets/school-logo.jpg">
+<title>EduTrack AI | DATA SANA MEMORIAL SCHOOL</title><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+ <div class="brand"><img src="assets/school-logo.jpg" alt="DATA SANA MEMORIAL SCHOOL logo"><div><strong>DATA SANA MEMORIAL SCHOOL</strong><span>EduTrack AI · School Information System</span></div></div>
+ <div class="top-actions">
+  <span class="live-dot" id="modeBadge">● …</span>
+  <select id="language" aria-label="Language"><option value="en">English</option><option value="am">አማርኛ</option></select>
+  <span class="session-role" id="sessionRole"></span>
+  <button class="btn" id="logoutBtn" hidden>Sign out</button>
+  <button class="icon-btn" id="installBtn" hidden>Install app</button>
+ </div>
+</header>
+<div class="layout">
+<aside class="sidebar">
+ <div class="school-chip"><span class="chip-icon">✦</span><div><b>EduTrack AI</b><small>To seek · To serve · To know</small></div></div>
+ <label class="small-label" data-i18n="workspace">WORKSPACE</label>
+ <nav id="nav">
+  <button class="nav-item active" data-page="dashboard"><span>▦</span><span class="nav-text">Dashboard</span></button>
+  <button class="nav-item" data-page="status"><span>◔</span><span class="nav-text">Application status</span></button>
+  <button class="nav-item" data-page="registration"><span>✚</span><span class="nav-text">Student registration</span><i id="pendingBadge">0</i></button>
+  <button class="nav-item" data-page="attendance"><span>✓</span><span class="nav-text">Daily attendance</span></button>
+  <button class="nav-item" data-page="students"><span>♙</span><span class="nav-text">Students</span></button>
+  <button class="nav-item" data-page="classes"><span>▤</span><span class="nav-text">Classes & teachers</span></button>
+  <button class="nav-item" data-page="reports"><span>▥</span><span class="nav-text">Reports</span></button>
+  <button class="nav-item" data-page="assistant"><span>✧</span><span class="nav-text">AI assistant</span></button>
+  <button class="nav-item" data-page="announcements"><span>▱</span><span class="nav-text">Announcements</span></button>
+ </nav>
+ <div class="sidebar-bottom"><div class="privacy-note" id="privacyNote"></div></div>
+</aside>
+<main class="main" id="main" tabindex="-1">
+ <div class="page-heading"><div><div class="eyebrow">DATA SANA MEMORIAL SCHOOL</div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle"></p></div><div class="date-pill" id="today"></div></div>
+ <section id="pageContent"></section>
+ <footer>© <span id="year"></span> DATA SANA MEMORIAL SCHOOL · EduTrack AI <span>· Secure school information starts with responsible access.</span></footer>
+</main>
+</div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="data-demo.js"></script>
+<script src="assistant.js"></script>
+<script src="app.js"></script>
+</body></html>

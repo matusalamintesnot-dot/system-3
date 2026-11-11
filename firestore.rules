@@ -1,0 +1,116 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data; }
+    function isActive() { return signedIn() && me().status == 'active'; }
+    function hasRole(r) { return isActive() && me().role == r; }
+    function isAdmin() { return hasRole('admin'); }
+    function isTeacher() { return hasRole('teacher'); }
+    function isStudent() { return hasRole('student'); }
+    function teachesClass(classId) {
+      return isTeacher() && me().classIds is list && classId in me().classIds;
+    }
+    function isText(v, minLen, maxLen) {
+      return v is string && v.size() >= minLen && v.size() <= maxLen;
+    }
+
+    // ---------- profiles ----------
+    // Roles are NEVER chosen by the user. A self-created profile can only be
+    // a pending student. Only an administrator can activate or change anyone.
+    match /profiles/{uid} {
+      allow read: if signedIn() && (
+        request.auth.uid == uid
+        || isAdmin()
+        || teachesClass(resource.data.classId)
+      );
+      allow create: if signedIn() && (
+        ( request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['uid','email','displayName','role','status','createdAt'])
+          && request.resource.data.keys().hasAll(['uid','email','displayName','role','status','createdAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.role == 'student'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.createdAt == request.time
+          && isText(request.resource.data.displayName, 2, 80) )
+        || isAdmin()
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- student applications (document id = student's uid) ----------
+    match /registrationRequests/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['uid','name','grade','section','guardian','phone','status','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','name','grade','section','guardian','phone','status','createdAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && isText(request.resource.data.name, 2, 80)
+        && request.resource.data.grade in [9, 10, 11, 12]
+        && isText(request.resource.data.section, 1, 4)
+        && isText(request.resource.data.guardian, 0, 80)
+        && isText(request.resource.data.phone, 0, 30);
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- classes ----------
+    match /classes/{classId} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // ---------- attendance (document id = classId_YYYY-MM-DD_studentUid) ----------
+    // Only the assigned homeroom teacher can write. Students and admins cannot.
+    function validAttendance(recordId, d) {
+      let parts = d.date.split('-');
+      let day = timestamp.date(int(parts[0]), int(parts[1]), int(parts[2]));
+      let student = get(/databases/$(database)/documents/profiles/$(d.studentUid)).data;
+      return d.keys().hasOnly(['classId','date','studentUid','studentId','status','markedBy','markedAt'])
+        && d.keys().hasAll(['classId','date','studentUid','studentId','status','markedBy','markedAt'])
+        && d.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && recordId == d.classId + '_' + d.date + '_' + d.studentUid
+        && d.status in ['present','absent','late','excused']
+        && d.markedBy == request.auth.uid
+        && d.markedAt == request.time
+        && teachesClass(d.classId)
+        && student.role == 'student'
+        && student.status == 'active'
+        && student.classId == d.classId
+        && student.studentId == d.studentId
+        && day <= request.time + duration.value(1, 'd')
+        && day >= request.time - duration.value(14, 'd');
+    }
+    match /attendance/{recordId} {
+      allow read: if isAdmin()
+        || teachesClass(resource.data.classId)
+        || (isStudent() && resource.data.studentUid == request.auth.uid);
+      allow create: if validAttendance(recordId, request.resource.data);
+      allow update: if teachesClass(resource.data.classId)
+        && validAttendance(recordId, request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- announcements ----------
+    match /announcements/{id} {
+      allow read: if isActive();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['title','body','authorUid','createdAt'])
+        && isText(request.resource.data.title, 1, 120)
+        && isText(request.resource.data.body, 1, 2000);
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- counters (student ID sequence) ----------
+    match /meta/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    // Everything else is closed.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
